@@ -16,6 +16,7 @@
 
 /* レイアウトで異なる特殊キー
  * IMEがJP106かな配列を前提とするため、AX/USでも同じHIDコードを送る必要があります */
+ 
 #if defined(IMS_LAYOUT_JP106)
 #define JA_MU    KC_RBRC        /* む  JP106: ]位置 */
 #define JA_RO    KC_INT1        /* ろ  JP106: \位置(右Shift左) */

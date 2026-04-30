@@ -1,5 +1,5 @@
 {
-  "name": "YMD40 air40 its",
+  "name": "YMD40 air40 ims",
   "vendorId": "0x45D4",
   "productId": "0x0911",
   "matrix": { "cols": 12, "rows": 4 },

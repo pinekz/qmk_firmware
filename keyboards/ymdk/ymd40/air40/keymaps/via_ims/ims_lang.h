@@ -16,12 +16,11 @@
  *   個別型 (オン/オフが別キー):
  *     IMS_IME_ON / IMS_IME_OFF を定義、IMS_IME_SWITCH はコメントアウト
  *     例: Mac (かな = KC_LNG1 / 英数 = KC_LNG2)
- *     注: 個別型では IMS_IME_ON_SUB を KC_NO にすること推奨
- *         (LNG1 自体がかな遷移を意味するので追加送出は冗長・有害)
  *
- *   混合型 (IMEで設定次第):
- *     3つとも定義可
+ *   混合型 (IMEで設定に同期):
+ *     3つとも定義可（ここで定義せずに、IMEモニタも使わないとモードずれを起こします）
  * ========================================================================= */
+
 #define IMS_IME_SWITCH  KC_RALT
 // #define IMS_IME_ON   KC_LNG1
 // #define IMS_IME_OFF  KC_LNG2
@@ -31,26 +30,38 @@
  *
  * MODキーを増やす場合は以下の箇所を同時に変更する:
  *   1. IMS_CODE_MODn を追加定義
- *   2. IMS_MOD_COUNT をMODキー数の合計にする
- *   3. IMS_MOD_KEYS / IMS_MOD_LAYERS に対応定数エントリを追加
- *   4. enum layer_names に L_LANGn を追加
+ *   2. IMS_MOD_KEYS / IMS_MOD_LAYERS に対応定数エントリを追加
+ *   3. enum layer_names に L_LANGn を追加
  * ========================================================================= */
-#define IMS_CODE_MOD1   KC_INT4  /* 変換キー   */
-#define IMS_CODE_MOD2   KC_INT5  /* 無変換キー */
-// #define IMS_CODE_MOD3   KC_???
 
-#define IMS_MOD_COUNT   2
-#define IMS_MOD_KEYS    { IMS_CODE_MOD1, IMS_CODE_MOD2 }
-#define IMS_MOD_LAYERS  { L_LANG1, L_LANG2 }
+#define IMS_CODE_MOD1   KC_INT4  /* MODキーに変換キーを指定した   */
+#define IMS_CODE_MOD2   KC_INT5  /* MODキーに無変換キーを指定した */
 
-#define IMS_COMBO_TIMEOUT 80 /* Simultaneous Press ｶ同時押しタイマー(mSec) */
-#define IMS_MAX_COMBO_LEN 2  /* language.cでの composite文字数　例: は + ゜→ ぱ */
+#define IMS_MOD_KEYS    { IMS_CODE_MOD1, IMS_CODE_MOD2 }   /* MODキーの配列   */
+#define IMS_MOD_LAYERS  { L_LANG1, L_LANG2 }               /* MODキーの配列ﾆ対応するレイヤ   */
+
+#define IMS_COMBO_TIMEOUT 80      /* Simultaneous Press 同時押しタイマー(mSec) */
+#define IMS_MAX_COMBO_LEN 2       /* language.cでの composite文字数　例: は + ゜→ ぱ */
+
+/* =========================================================================
+ * Layer definition (moved from keymap.c)
+ * L_BASE は常時ON。IMEオン時は L_LANG* を参照するが実レイヤ遷移はしない
+ * ========================================================================= */
+
+enum layer_names {
+    L_BASE = 0,
+    L_BASE1,
+    L_BASE2,
+    L_LANG,
+    L_LANG1,
+    L_LANG2
+};
 
 /* =========================================================================
  * 英数・かなトグル (解釈A: 方向別送出方式)
  *
  * IMS_ALFA_TGL     : ユーザーが押すトリガキー
- *                     カスタムキーコード(VIA 合成) またはトグルキーの場合、
+ *                     カスタムキーコード(VIA 合成; Anykey) またはトグルキーの場合、
  *                     実際の送信をせず、下記のオンオフキーに変換してPCに送出する。
  *                     物理キーの同時押し (Ctrl + U 等) の場合では、同時押しの状態決定が遅れる為、
  *                     物理キーの監視をして、IMS は内部の状態変更のみ行う (二重送出を防ぐ)。
@@ -77,18 +88,9 @@
  *   (VIA でこのカスタムキーコードを物理キー位置に配置する)
  * ========================================================================= */
 
-#define IMS_ALFA_TGL        LCTL(KC_U)
-#define IMS_ALFA_TGL_ON     LCTL(KC_U)
+#define IMS_ALFA_TGL        LCTL(KC_0)
+#define IMS_ALFA_TGL_ON     LCTL(KC_0)
 #define IMS_ALFA_TGL_OFF    LCTL(KC_SPC)
-
-/* =========================================================================
- * Specific language start in IME on : オン後に追加送出するキー
- *
- * IMEが前回の入力モードを復元する場合に、かなモードへ強制遷移させるため使用
- * 不要な場合は KC_NO を指定
- * ========================================================================= */
-
-#define IMS_IME_ON_SUB  LCTL(KC_SPC)
 
 /* =========================================================================
  * IMS Reset : IMS内部状態リセット
@@ -98,21 +100,6 @@
  * ========================================================================= */
 
 #define IMS_RESET       LCTL(LALT(KC_Q))
-
-/* =========================================================================
- * Layer definition (moved from keymap.c)
- * L_BASE は常時ON。IMEオン時は L_LANG を参照するが実レイヤ遷移はしない
- * ========================================================================= */
-
-enum layer_names {
-    L_BASE = 0,
-    L_BASE1,
-    L_BASE2,
-    L_LANG,
-    L_LANG1,
-    L_LANG2
-    // L_LANG3,
-};
 
 /* =========================================================================
  * Custom keycodes (VIA Protocol 12 : QK_KB_0 (0x7E00) instead of SAFE_RANGE)
@@ -160,37 +147,32 @@ enum custom_keycodes {
  * 独立 Raw HID コマンド ID を作ると VIA プロトコル (0x01-0x15) と衝突する
  * ため、channel_id=IMS_VIA_CHANNEL_ID 配下の value_id で多重化する。
  *
- *   GET  channel=IMS_VIA_CHANNEL_ID  value=IMS_VAL_HELLO  ->  "IMS1"+ver 応答
+ *   GET  channel=IMS_VIA_CHANNEL_ID  value=IMS_VAL_HELLO  ->  "IMS1"+verion で応答
  *   SET  channel=IMS_VIA_CHANNEL_ID  value=IMS_VAL_STATE  +  [ime_on][alfa]
- *   SET  channel=IMS_VIA_CHANNEL_ID  value=IMS_VAL_HEARTBEAT (Phase 1: 消費のみ)
  *
  * 監視ソフト非接続/非対応時は via_custom_value_command_kb が呼ばれない、
- * または他 channel として id_unhandled を返すだけなので、blind IMS 動作は
+ * または他 channel として id_unhandled を返すだけなので、blind での IMS動作は
  * 常に保証される。
  *
  * VIA 無効時 (VIA_ENABLE=no) は ims.c 末尾の HID ブロックがコンパイルから
  * 外れるため、こちらも blind IMS のみで完全動作する。
- * ========================================================================= */
+ 
+ * VIA Custom Value の channel ID
+ * VIA が予約する 0x00〜0x05 (backlight/rgblight/rgb_matrix/led_matrix/audio) を避け、
+ * IMSの 'I' (0x49) をマーカーとして使用 (raw HIDでは一文字づつ順に送出する為) 
+* ========================================================================= */
 
-/* VIA Custom Value の channel ID
- * VIA が予約する 0..4 (backlight/rgblight/rgb_matrix/led_matrix/audio) を避け、
- * 'I' (0x49) をマーカーとして使用 (hex ダンプで識別しやすい)。 */
 #define IMS_VIA_CHANNEL_ID      0x49
 
 /* IMS channel 内の value_id */
-#define IMS_VAL_STATE           0x01  /* SET: [3]=ime_on [4]=alfa          */
-#define IMS_VAL_HELLO           0x02  /* GET: 応答=[3..6]="IMS1" [7]=ver   */
-#define IMS_VAL_HEARTBEAT       0x03  /* SET: (Phase 1 では消費のみ)        */
+#define IMS_VAL_STATE           0x01   /* SET: [3]=ime_on [4]=alfa          */
+#define IMS_VAL_HELLO           0x02   /* GET: 応答=[3..6]="IMS1" [7]=ver   */
 
-/* HELLO 応答に載せるマジック + プロトコルバージョン */
-#define IMS_HID_MAGIC0          'I'
-#define IMS_HID_MAGIC1          'M'
-#define IMS_HID_MAGIC2          'S'
-#define IMS_HID_MAGIC3          '1'
-#define IMS_HID_PROTO_VER       1
+#define IMS_HID_MAGIC          "IMS1"  /* HELLO 応答の識別子 (4 bytes, NUL 終端は送らない) */
+#define IMS_HID_PROTO_VER      1       /* プロトコル仕様変更時に増やす */
 
 /* ims.c 内の HID コールバック (via_custom_value_command_kb) から呼ぶ
- * 状態注入 API。ヘッダでは宣言のみ。 */
+ * IME状態の注入 API。ヘッダでは宣言のみ。 */
 void ims_apply_host_state(bool host_ime_on, bool host_alfa);
 
 #endif
