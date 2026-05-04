@@ -28,19 +28,19 @@
 /* =========================================================================
  * Simultaneous Press keys (同時押しキーの指定)
  *
- * MODキーを増やす場合は以下の箇所を同時に変更する:
- *   1. IMS_CODE_MODn を追加定義
- *   2. IMS_MOD_KEYS / IMS_MOD_LAYERS に対応定数エントリを追加
+ * 同時押しキー (S_KEY = Simultaneous Press Key) を増やす場合は以下を同時に変更:
+ *   1. IMS_CODE_S_KEYn を追加定義
+ *   2. IMS_S_KEYS / IMS_S_KEY_LAYERS に対応エントリを追加
  *   3. enum layer_names に L_LANGn を追加
  * ========================================================================= */
 
-#define IMS_CODE_MOD1   KC_INT4  /* MODキーに変換キーを指定した   */
-#define IMS_CODE_MOD2   KC_INT5  /* MODキーに無変換キーを指定した */
+#define IMS_CODE_S_KEY1   KC_INT4  /* 同時押しキー1 に変換キーを指定   */
+#define IMS_CODE_S_KEY2   KC_INT5  /* 同時押しキー2 に無変換キーを指定 */
 
-#define IMS_MOD_KEYS    { IMS_CODE_MOD1, IMS_CODE_MOD2 }   /* MODキーの配列   */
-#define IMS_MOD_LAYERS  { L_LANG1, L_LANG2 }               /* MODキーの配列ﾆ対応するレイヤ   */
+#define IMS_S_KEYS        { IMS_CODE_S_KEY1, IMS_CODE_S_KEY2 }  /* 同時押しキーの配列 */
+#define IMS_S_KEY_LAYERS  { L_LANG1, L_LANG2 }                  /* 対応するレイヤの配列 */
 
-#define IMS_COMBO_TIMEOUT 80      /* Simultaneous Press 同時押しタイマー(mSec) */
+#define IMS_COMBO_TIMEOUT 80      /* 同時押しタイマー(mSec) */
 #define IMS_MAX_COMBO_LEN 2       /* language.cでの composite文字数　例: は + ゜→ ぱ */
 
 /* =========================================================================

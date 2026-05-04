@@ -15,27 +15,87 @@
  */
 
 /* =============================================================================
+ *  IMS (Internationalized Multi Shift) keyboard module の構成
  *
- *   process_ims:
- *     (1-1) try_match_special  - chord 蓄積 + 特殊キー判定 (3値戻り)
- *     (1-2) モード判定          - かな成立 = ime_on && !alfa_mode
- *     (1-3) 英数素通し
- *     (2)  process_kana        - かなモード処理 (封止)
+ *  ---- ファイル構成 ----
  *
- *   モディファイア・キー5種: IMS_IME_SWITCH / IMS_IME_ON / IMS_IME_OFF / IMS_ALFA_TGL / IMS_RESET
+ *  ims_lang.h : ユーザ設定 (起動スイッチ / 同時押しキー / トグルキー /
+ *               カスタムキーコード / VIA HID 連携定数)
+ *  ims.c      : IMS 本体 (キーイベント処理 / タイマ監視 / VIA HID コールバック)
+ *  keymap.c   : QMK フックを ims.c に繋ぐ
  *
- *   IMS_ALFA_TGL の特殊扱い:
- *     - VIA 合成 / カスタムキーコード / 単独基本キーでマッチ:
- *         トリガ握り潰し (return false) + 方向別キー送出
- *     - 物理 chord (Ctrl press + U press + Ctrl release) でマッチ:
- *         既にホストに流れているので状態変更のみ (return true)
+ *  ---- エントリポイント (ims.c 内) ----
  *
- *   chord 確定:
- *     - 物理 chord     : 構成 mod が全部離れた瞬間に確定
- *     - VIA 合成 chord : press 時点で即確定 (1イベントで届くため)
+ *   1.  process_ims                    : キーイベント処理                  呼び出し元: process_record_user［keymap.c］                           
+ *   2.  ims_matrix_scan                : combo_timeout 経過チェック        呼び出し元: matrix_scan_user［keymap.c］                   
+ *   3.  via_custom_value_command_kb    : IME_monitor からのレポート受信    呼び出し元: VIA framework : raw_hid_receive
+ *                                       
+ *  ---- 関数・定数・変数要素のグルーピング (ims.c 内) ----
  *
- *   不変条件: alfa_mode=true なら必ず ime_on=true
- *             → set_ime_on() ヘルパで強制
+ *   [A]    全体で共用する
+ *   [B]    エントリポイント 1.  process_ims
+ *   [C]    エントリポイント 2.  ims_matrix_scan
+ *   [D]    エントリポイント 3.  via_custom_value_command_kb
+ *
+ *   番号体系: 大文字 (A-1 等)    = グループ
+ *            小文字 (a, b, c …) = 定数 / 配列 / 変数
+ *            数字   (1, 2, 3 …) = 型 / 関数
+ *
+ *  ---- 処理の流れ (process_ims) ----
+ *
+ *  (1-1) try_match_special                                       [B-(12)]
+ *        chord (= 修飾キー単体 (L/R の CTL, SFT, ALT, GUI 8種) + 基本キーの組)
+ *        を蓄積しながら、特殊キー (下記 5 種) のマッチを 3 値で返す:
+ *          IMS_MATCH_NONE  マッチなし → 通常処理へ
+ *          IMS_MATCH_PASS  マッチ + トリガをホストに流す (return true)
+ *          IMS_MATCH_EAT   マッチ + トリガを握り潰す     (return false)
+ *
+ *        特殊キー 5 種 (ims_lang.h で定義):
+ *          IMS_IME_SWITCH / IMS_IME_ON / IMS_IME_OFF
+ *          IMS_ALFA_TGL   (英数⇔かなトグル)
+ *          IMS_RESET      (内部状態リセット)
+ *
+ *        IMS_ALFA_TGL のみ流入経路で扱いが分岐:
+ *          - VIA 合成 / カスタムキーコード / 単独基本キー経由
+ *              → トリガ受信で、方向別 (かな/英数) キー送出
+ *          - 物理 chord (例: Ctrl press → U press → Ctrl release) 経由
+ *              → トリガは既にホストに流れている。状態変更のみ (PASS)
+ *
+ *        モディファイアchord 確定タイミング:
+ *          - 物理 chord     : 構成 mod が全部離れた瞬間に確定
+ *          - VIA 合成 chord : press 時点で即確定 (1 イベントで届くため)
+ *
+ *  (1-2) is_composed_kc / レイヤ移動キーの一元処理
+ *        VIA 合成キーは chord 管理外、ホストに流す。
+ *        MO レイヤキーは IME on/off に関係なく一元処理 (alfa 強制 ON/OFF)。
+ *
+ *  (1-3) モード判定
+ *        かな成立条件 = ime_on && !alfa_mode
+ *        不変条件     : alfa_mode=true なら必ず ime_on=true
+ *                       → set_ime_on() ヘルパで強制                [A-2-(1)]
+ *        かな不成立なら以降をスキップしてホストに流す (英数素通し)
+ *
+ *  (2)   process_kana  かなモード処理 (封止)                      [B-(13)]
+ *
+ *        (2-1) L_BASE 以外のレイヤが ON         → 素通し
+ *        (2-2) passthrough_key の release       → 必ず通す (stuck 防止)
+ *        (2-3) 修飾キー単体                     → 素通し
+ *        (2-4) Ctrl/Alt/GUI 保持中の key        → flush_pending +
+ *                                                 passthrough_key 記録 + 素通し
+ *        (2-5) 同時押しキー (s_key_to_layer ヒット):
+ *                press   pending あり → send_with_s_key            [B-(1)]
+ *                        pending なし → pending_s_key セット
+ *                release pending_s_key があれば送出
+ *        (2-6) かなキー:
+ *                KC_NO   → eat (素通しすると L_BASE が漏れる)
+ *                KC_TRNS → 素通し
+ *                その他 press 時:
+ *                  pending_s_key 有り → send_with_s_key
+ *                  pending_lang 有り  → flush_pending して新規 pending
+ *                  なし               → 新規 pending + combo_timer 開始
+ *
+ *  詳細は各セクション ([A-1] 〜 [A-3] / [B-(1)] 〜 [B-(13)] / [C] / [D]) のコメント参照。
+ *
  * ============================================================================= */
 
 #include <string.h>
@@ -60,8 +120,8 @@ typedef struct {
 
 static pending_key_t pending_lang = {0, 0, false};  /* 押されたキーの物理位置を示す */
 
-static uint16_t      pending_mod  = 0xFFFF;
-static uint16_t      combo_timer  = 0;
+static uint16_t      pending_s_key = 0xFFFF;
+static uint16_t      combo_timer   = 0;
 
 /* =============================================================================
  * [A-2] 型・変数  (process_ims / via_custom_value_command_kb で共有）
@@ -136,7 +196,7 @@ static inline void chord_reset(void) {
 #endif
 
 /* A-3-(1) : send_keycode
- *   (呼び出し元: send_with_mod / flush_pending)
+ *   (呼び出し元: send_with_s_key / flush_pending)
  *    CUSTOM KEYCODEならば、ims_handle_lang のテーブル参照に回送する。
  *    または、via で Anykey設定した mod付キーを tap16する。: C(KC_SPC) など。
  */
@@ -154,7 +214,7 @@ static void flush_pending(void) {
     if (!pending_lang.valid) return;
     uint16_t kc = dynamic_keymap_get_keycode(L_LANG, pending_lang.row, pending_lang.col);
     pending_lang.valid = false;
-    pending_mod        = 0xFFFF;
+    pending_s_key        = 0xFFFF;
     send_keycode(kc);
 }
 
@@ -162,13 +222,13 @@ static void flush_pending(void) {
  * B-(1) 送出ヘルパ   (呼び出し元: process_kana)
  * ========================================================================= */
 
-/* B-(1) : send_with_mod
+/* B-(1) : send_with_s_key
  */
-static void send_with_mod(uint8_t mod_layer) {
+static void send_with_s_key(uint8_t s_key_layer) {
     if (!pending_lang.valid) return;
-    uint16_t kc = dynamic_keymap_get_keycode(mod_layer, pending_lang.row, pending_lang.col);
+    uint16_t kc = dynamic_keymap_get_keycode(s_key_layer, pending_lang.row, pending_lang.col);
     pending_lang.valid = false;
-    pending_mod        = 0xFFFF;
+    pending_s_key        = 0xFFFF;
     send_keycode(kc);
 }
 
@@ -186,20 +246,20 @@ static void send_with_mod(uint8_t mod_layer) {
 #endif
 
 /* =========================================================================
- * B-c : IMS_MOD_COUNT 算出テーブル
+ * B-c : IMS_S_KEY_COUNT 算出テーブル
  *
- * IMS_MOD_KEYS / IMS_MOD_LAYERS は ims_lang.h でユーザが定義する。
+ * IMS_S_KEYS / IMS_S_KEY_LAYERS は ims_lang.h でユーザが定義する。
  * 要素数を算出し。両配列の長さが食い違っていればコンパイル時に止まる。
  * ========================================================================= */
 
-static const uint16_t ims_mod_keys[]   = IMS_MOD_KEYS;
-static const uint8_t  ims_mod_layers[] = IMS_MOD_LAYERS;
-#define IMS_MOD_COUNT (sizeof(ims_mod_keys) / sizeof(ims_mod_keys[0]))
+static const uint16_t ims_s_keys[]   = IMS_S_KEYS;
+static const uint8_t  ims_s_key_layers[] = IMS_S_KEY_LAYERS;
+#define IMS_S_KEY_COUNT (sizeof(ims_s_keys) / sizeof(ims_s_keys[0]))
 
 _Static_assert(
-    sizeof(ims_mod_keys) / sizeof(ims_mod_keys[0])
-        == sizeof(ims_mod_layers) / sizeof(ims_mod_layers[0]),
-    "IMS_MOD_KEYS と IMS_MOD_LAYERS の要素数が一致していません");
+    sizeof(ims_s_keys) / sizeof(ims_s_keys[0])
+        == sizeof(ims_s_key_layers) / sizeof(ims_s_key_layers[0]),
+    "IMS_S_KEYS と IMS_S_KEY_LAYERS の要素数が一致していません");
 
 
 /* =========================================================================
@@ -217,20 +277,20 @@ typedef enum {
  * ヘルパ
  * ========================================================================= */
 
-/* B-(2) mod_to_layer
+/* B-(2) s_key_to_layer
  *    (呼び出し元: process_kana)
- *     組キー keycode → L_LANGn レイヤ番号 (該当なし 0xFF)
+ *     同時押しキー keycode → L_LANGn レイヤ番号 (該当なし 0xFF)
  */
-static uint8_t mod_to_layer(uint16_t mod_key) {
-    for (uint8_t i = 0; i < IMS_MOD_COUNT; i++) {
-        if (ims_mod_keys[i] == mod_key) return ims_mod_layers[i];
+static uint8_t s_key_to_layer(uint16_t s_key) {
+    for (uint8_t i = 0; i < IMS_S_KEY_COUNT; i++) {
+        if (ims_s_keys[i] == s_key) return ims_s_key_layers[i];
     }
     return 0xFF;
 }
 
 /* B-(3) mod_kc_to_bit
- *    (呼び出し元: try_match_special) 
- *     純粋 modifier keycode (KC_LCTL 等) → QK形式 mod bit
+ *      (呼び出し元: try_match_special) 
+ *     modキー (KC_LCTL 等) → QK形式 mod bit
  */
 static uint8_t mod_kc_to_bit(uint16_t kc) {
     switch (kc) {
@@ -314,15 +374,15 @@ static uint8_t extract_target_layer(uint16_t kc) {
  *     指定レイヤが L_LANGn のいずれかか
  */
 static bool is_lang_layer(uint8_t layer) {
-    for (uint8_t i = 0; i < IMS_MOD_COUNT; i++) {
-        if (ims_mod_layers[i] == layer) return true;
+    for (uint8_t i = 0; i < IMS_S_KEY_COUNT; i++) {
+        if (ims_s_key_layers[i] == layer) return true;
     }
     return false;
 }
 
 /* =========================================================================
  * B-(10) : ALFA_TGL fire : 状態トグル + 方向別送出
- *     (呼び出し元: try_match_special / process_ims)
+ *         (呼び出し元: try_match_special / process_ims)
  * send_key = true  : 方向別キー送出 (トリガを握り潰すケース)
  * send_key = false : 状態変更のみ (物理 chord でトリガが既にホスト到達済み)
  * ========================================================================= */
@@ -350,7 +410,7 @@ static void alfa_tgl_fire(bool send_key) {
 /*  */
 /* =========================================================================
  * B-(11) : match_other_specials
- *      (呼び出し元: try_match_special)
+ *         (呼び出し元: try_match_special)
  *      IMS_ALFA_TGL 以外のモディファイア・キーマッチ処理 (状態変更のみ)
  *      戻り値: マッチしたら true
  * ========================================================================= */
@@ -384,7 +444,7 @@ static bool match_other_specials(uint16_t eff) {
     if (eff == IMS_RESET) {
         set_ime_on(false);
         pending_lang.valid = false;
-        pending_mod        = 0xFFFF;
+        pending_s_key        = 0xFFFF;
         return true;
     }
 
@@ -393,7 +453,7 @@ static bool match_other_specials(uint16_t eff) {
 
 /* =========================================================================
  * B-(12) : try_match_special
- *     (呼び出し元: process_ims)
+ *         (呼び出し元: process_ims)
  * (1)  モディファイア・キー chord 判定
  * ========================================================================= */
 
@@ -425,7 +485,15 @@ static ims_match_t try_match_special(uint16_t keycode, keyrecord_t *record) {
         return IMS_MATCH_NONE;
     }
 
-    /* --- 純粋 modifier : chord_mods を蓄積/削減 --- */
+    /* chord_mods を蓄積 |= bit (ビット OR) または削減 &= ~bit
+         mods は QK 形式の 5bit のビットマスクで、各ビットが個別の修飾キーに対応:
+         bit   値    修飾キー  
+         0    0x01    LCTL
+         1    0x02    LSFT
+         2    0x04    LALT
+         3    0x08    LGUI
+         4    0x10    Right flag
+     */
     if (IS_MODIFIER_KEYCODE(keycode)) {
         uint8_t bit = mod_kc_to_bit(keycode);
         if (record->event.pressed) {
@@ -433,7 +501,7 @@ static ims_match_t try_match_special(uint16_t keycode, keyrecord_t *record) {
             chord.peak_mods |= bit;        /* chord 中に立った mod を和集合で蓄積 */
             chord.started    = true;
         } else {
-            chord.mods &= ~bit;
+            chord.mods &= ~bit;            /* release で減算  */
             /* 純粋 mod chord (base なし) のみここで確定。
              * base 有り chord は base release 側で確定するため、ここでは触らない。
              * これにより複数 mod の release 順序は chord の意味論に影響しない。 */
@@ -565,21 +633,21 @@ static bool process_kana(uint16_t keycode, keyrecord_t *record) {
         return true;
     }
 
-    /* 組キー処理 */
+    /* 同時押しキー処理 */
     {
-        uint8_t mod_layer = mod_to_layer(lang_kc);
-        if (mod_layer != 0xFF) {
+        uint8_t s_key_layer = s_key_to_layer(lang_kc);
+        if (s_key_layer != 0xFF) {
             if (record->event.pressed) {
                 if (pending_lang.valid) {
-                    send_with_mod(mod_layer);
+                    send_with_s_key(s_key_layer);
                 } else {
-                    pending_mod = lang_kc;
+                    pending_s_key = lang_kc;
                     combo_timer = timer_read();
                 }
             } else {
-                if (pending_mod != 0xFFFF) {
+                if (pending_s_key != 0xFFFF) {
                     send_keycode(lang_kc);
-                    pending_mod = 0xFFFF;
+                    pending_s_key = 0xFFFF;
                 }
             }
             return false;
@@ -594,12 +662,12 @@ static bool process_kana(uint16_t keycode, keyrecord_t *record) {
     if (lang_kc == KC_TRNS) return true;
 
     if (record->event.pressed) {
-        uint8_t mod_layer = (pending_mod != 0xFFFF) ? mod_to_layer(pending_mod) : 0xFF;
-        if (mod_layer != 0xFF) {
+        uint8_t s_key_layer = (pending_s_key != 0xFFFF) ? s_key_to_layer(pending_s_key) : 0xFF;
+        if (s_key_layer != 0xFF) {
             pending_lang.row   = record->event.key.row;
             pending_lang.col   = record->event.key.col;
             pending_lang.valid = true;
-            send_with_mod(mod_layer);
+            send_with_s_key(s_key_layer);
         } else if (pending_lang.valid) {
             flush_pending();
             pending_lang.row   = record->event.key.row;
@@ -698,7 +766,7 @@ bool process_ims(uint16_t keycode, keyrecord_t *record) {
 
 void ims_matrix_scan(void) {
     if (!ime_on || alfa_mode) return;
-    if (!pending_lang.valid && pending_mod == 0xFFFF) return;
+    if (!pending_lang.valid && pending_s_key == 0xFFFF) return;
     if (timer_elapsed(combo_timer) > IMS_COMBO_TIMEOUT) {
         flush_pending();
     }
@@ -719,7 +787,7 @@ void ims_matrix_scan(void) {
  *                           入力待ち状態にして新状態を適用する
  *
  * 全クリア対象: chord (mods/peak/base/started) / passthrough_key / pending_lang /
- *               pending_mod / combo_timer / layer_forced_alfa
+ *               pending_s_key / combo_timer / layer_forced_alfa
  */
 void ims_apply_host_state(bool host_ime_on, bool host_alfa) {
     bool changed = (host_ime_on != ime_on) ||
@@ -733,7 +801,7 @@ void ims_apply_host_state(bool host_ime_on, bool host_alfa) {
     chord_reset();
     passthrough_key.valid   = false;
     pending_lang.valid      = false;
-    pending_mod             = 0xFFFF;
+    pending_s_key             = 0xFFFF;
     combo_timer             = 0;
     layer_forced_alfa.valid = false;
 
@@ -769,7 +837,8 @@ void ims_apply_host_state(bool host_ime_on, bool host_alfa) {
 /* D-a (呼び出し元: via_custom_value_command_kb) */
 /* D-b (呼び出し元: via_custom_value_command_kb) */
 /* D-c (呼び出し元: via_custom_value_command_kb) */
-/* VIA コマンド ID (via_command_id.h に依存しないよう直定義) */
+/* VIA コマンド ID (via_command_id.h に依存しないよう直定義)
+ */
 #define IMS_VIA_ID_SET_VALUE   0x07
 #define IMS_VIA_ID_GET_VALUE   0x08
 #define IMS_VIA_ID_UNHANDLED   0xFF
