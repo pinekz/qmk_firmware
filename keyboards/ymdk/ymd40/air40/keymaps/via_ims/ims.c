@@ -110,6 +110,7 @@ extern void ims_handle_lang(uint16_t index);
 
 static bool ime_on    = false;
 static bool alfa_mode = false;
+static bool ims_bypass = false;   /* IMS全体バイパス (ローマ字キーボード化) */
 
 /* pending_key_t 構造体 (呼び出し元: A-2) */
 typedef struct {
@@ -448,6 +449,11 @@ static bool match_other_specials(uint16_t eff) {
         return true;
     }
 
+    if (eff == IMS_BYPASS) {
+        ims_bypass = !ims_bypass;
+        return true;
+    }
+
     return false;
 }
 
@@ -692,6 +698,13 @@ static bool process_kana(uint16_t keycode, keyrecord_t *record) {
  * ========================================================================= */
 
 bool process_ims(uint16_t keycode, keyrecord_t *record) {
+    /* バイパス中: 全キー素通し。ただし IMS_BYPASS の chord 検出のため
+     * try_match_special だけは呼ぶ (戻り値は無視)。 */
+    if (ims_bypass) {
+        (void)try_match_special(keycode, record);
+        return true;
+    }
+
     /* (1-1) モディファイア・キー chord 判定 (3値戻り) */
     ims_match_t r = try_match_special(keycode, record);
     if (r == IMS_MATCH_PASS) {
