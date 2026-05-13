@@ -2,50 +2,53 @@
 #define IMS_LANG_H
 
 #include "quantum.h"
-
 /* =========================================================================
- * IMS start switch : 起動スイッチ
+ * (1) IMS 起動スイッチ
  *
- * IMEのキー設定に合わせて設定します。3つの型をサポート:
+ * IMEのキー設定と同期させて設定します。3つの型をサポート:
+ *（定義せずに、IMEモニタ・ソフトも使わないとモードずれを起こします）
  *
  *   トグル型 (1キーでON/OFF):
  *     IMS_IME_SWITCH のみ定義する
- *     例: Windows JP106 (全角/半角 = KC_LANG5)
- *         Windows AX    (漢字      = KC_RALT)
+ *     例: Windows JP106レイアウト (全角/半角キー = KC_GRV) 注)参照
+ *         Windows AXレイアウト    (漢字キー     = KC_RALT)
  *
  *   個別型 (オン/オフが別キー):
  *     IMS_IME_ON / IMS_IME_OFF を定義、IMS_IME_SWITCH はコメントアウト
- *     例: Mac (かな = KC_LNG1 / 英数 = KC_LNG2)
+ *     例: Mac (かな = KC_LNG1 / 英数 = KC_LNG2) 注)参照
  *
- *   混合型 (IMEで設定に同期):
- *     3つとも定義可（ここで定義せずに、IMEモニタも使わないとモードずれを起こします）
+ *   混合型 (IMEで設定に同期させる必要があります):
+ *     3つとも定義可
+ * 
+ *   注）最新の 2025-2026年 QMKでは、全角/半角 = KC_LNG5 に変更されていますが、
+ *      via はそれに追随しておらず KC_LANG5 のままで、MS-IMEも KC_GRV のままです。
+ *      キーボードファームウェアとして閉じた世界では独断専行可能ですが、IMEとの連携
+ *      を必要とする本件は留意が必要です。(Macも同様ですが筆者に実機がなく不明です)
  * ========================================================================= */
 
-#define IMS_IME_SWITCH  KC_RALT
+#define IMS_IME_SWITCH  KC_GRV
 // #define IMS_IME_ON   KC_LNG1
 // #define IMS_IME_OFF  KC_LNG2
 
 /* =========================================================================
- * Simultaneous Press keys (同時押しキーの指定)
+ * (2) Simultaneous Press keys (同時押しキー) の指定
  *
  * 同時押しキー (S_KEY = Simultaneous Press Key) を増やす場合は以下を同時に変更:
- *   1. IMS_CODE_S_KEYn を追加定義
+ *   1. 同時押しキー (IMS_CODE_S_KEY +n) に キー を追加定義
  *   2. IMS_S_KEYS / IMS_S_KEY_LAYERS に対応エントリを追加
- *   3. enum layer_names に L_LANGn を追加
+ *   3. (3)の enum layer_names に L_LANG n を追加
  * ========================================================================= */
 
-#define IMS_CODE_S_KEY1   KC_INT4  /* 同時押しキー1 に変換キーを指定   */
-#define IMS_CODE_S_KEY2   KC_INT5  /* 同時押しキー2 に無変換キーを指定 */
+#define IMS_CODE_S_KEY1   KC_INT4  /* 同時押しキー1 に 変換キー を指定   */
+#define IMS_CODE_S_KEY2   KC_INT5  /* 同時押しキー2 に 無変換キー を指定 */
 
 #define IMS_S_KEYS        { IMS_CODE_S_KEY1, IMS_CODE_S_KEY2 }  /* 同時押しキーの配列 */
 #define IMS_S_KEY_LAYERS  { L_LANG1, L_LANG2 }                  /* 対応するレイヤの配列 */
 
-#define IMS_COMBO_TIMEOUT 80      /* 同時押しタイマー(mSec) */
-#define IMS_MAX_COMBO_LEN 2       /* language.cでの composite文字数　例: は + ゜→ ぱ */
-
 /* =========================================================================
- * Layer definition (moved from keymap.c)
- * L_BASE は常時ON。IMEオン時は L_LANG* を参照するが実レイヤ遷移はしない
+ * (3) Layer definition (moved from keymap.c)
+ * 
+ *    (2)で同時押しキーを増やした場合、L_LANG* を増やすことができます
  * ========================================================================= */
 
 enum layer_names {
@@ -58,20 +61,18 @@ enum layer_names {
 };
 
 /* =========================================================================
- * 英数・かなトグル (解釈A: 方向別送出方式)
+ * (4) 英数・かなトグル (方向別送出方式)
  *
  * IMS_ALFA_TGL     : ユーザーが押すトリガキー
  *                     カスタムキーコード(VIA 合成; Anykey) またはトグルキーの場合、
  *                     実際の送信をせず、下記のオンオフキーに変換してPCに送出する。
- *                     物理キーの同時押し (Ctrl + U 等) の場合では、同時押しの状態決定が遅れる為、
- *                     物理キーの監視をして、IMS は内部の状態変更のみ行う (二重送出を防ぐ)。
  *
- * IMS_ALFA_TGL_ON  : かな → 英数遷移時 (alfa_mode false→true) に IMSがPCに送るキー
- * IMS_ALFA_TGL_OFF : 英数 → かな遷移時 (alfa_mode true→false) に IMSがPCに送るキー
+ * IMS_ALFA_TGL_ON  : かな → 英数遷移時に IMSがPCに送るキー(IME設定要)
+ * IMS_ALFA_TGL_OFF : 英数 → かな遷移時に IMSがPCに送るキー(IME設定要)
  * 
  * --- 設定例 ---
  *
- * １キーで双方向トグル（Japanist10):
+ * １キーで双方向トグル（Japanist10 など):
  *   #define IMS_ALFA_TGL       LCTL(KC_Q)   : IME設定の英数かなトグルキー 
  *   #define IMS_ALFA_TGL_ON    LCTL(KC_Q)
  *   #define IMS_ALFA_TGL_OFF   LCTL(KC_Q)
@@ -81,8 +82,8 @@ enum layer_names {
  *   #define IMS_ALFA_TGL_ON    LCTL(KC_U)    <- IME設定の英数変換キー 
  *   #define IMS_ALFA_TGL_OFF   LCTL(KC_SPC)  <- IME設定のひらがなキー 
  *
- * トリガにカスタムキーコードを使う場合:
- *   #define IMS_ALFA_TGL       J_ALFA_TGL    : It needs to be add in enum custom_keycodes
+ * トリガにカスタムキーコードを設定して使う場合:
+ *   #define IMS_ALFA_TGL       J_ALFA_TGL  : Also add in enum custom_keycodes
  *   #define IMS_ALFA_TGL_ON    LCTL(KC_U)
  *   #define IMS_ALFA_TGL_OFF   LCTL(KC_SPC)
  *   (VIA でこのカスタムキーコードを物理キー位置に配置する)
@@ -93,18 +94,17 @@ enum layer_names {
 #define IMS_ALFA_TGL_OFF    LCTL(KC_SPC)
 
 /* =========================================================================
- * IMS Bypass : IMS全体バイパススイッチ
+ * (5) IMS Bypass : IMS全体バイパススイッチ
  *
- * 押すたびに ims_bypass を ON/OFF トグル。
+ *     ローマ字入力に切り換えることかできます。
  * ========================================================================= */
 
 #define IMS_BYPASS      LCTL(LSFT(KC_X))
 
 /* =========================================================================
- * IMS Reset : IMS内部状態リセット
+ * (6) IMS Reset : IMS内部状態リセット
  *
- * IMS内部状態 (ime_on / alfa_mode / 保留バッファ) をクリア。
- * 押したキー自体はホストにも流れる (Ctrl+Alt+Q or Q 単独)。
+ *     IMS内部状態 (ime_on / alfa_mode / 保留バッファ) をクリア。
  * ========================================================================= */
 
 #define IMS_RESET       LCTL(LALT(KC_Q))
@@ -112,14 +112,18 @@ enum layer_names {
 /* =========================================================================
  * Custom keycodes (VIA Protocol 12 : QK_KB_0 (0x7E00) instead of SAFE_RANGE)
  *
- * IMS_ALFA_TGL 用のカスタムキーコードを追加する場合、
- * J_KANA_END の後に追加する:
- *   enum custom_keycodes {
- *       J_A = QK_KB_0,
- *       ...
- *       J_KANA_END,
- *       J_ALFA_TGL,   <- 追加
- *   };
+ * 通常は変更しません
+ * 
+ * 1) 常に VIA_CUSTOM_START : QK_KB_0 = 0x7E00 から開始
+ * 2) language.c の実体テーブルと個数,順番が一致する必要があります
+ * 3) IMS_ALFA_TGL 用のカスタムキーコードを追加する場合、
+ *   J_KANA_END の後に追加する:
+ *      enum custom_keycodes {
+ *        J_A = QK_KB_0,
+ *        ...
+ *        J_KANA_END,
+ *        J_ALFA_TGL,   <- 追加
+ *     };
  * ========================================================================= */
 
 enum custom_keycodes {
@@ -148,8 +152,19 @@ enum custom_keycodes {
 };
 
 /* =========================================================================
+ * タイミング設定・コンポジット文字数
+ *
+ * 通常は変更しません
+ * ========================================================================= */
+
+#define IMS_COMBO_TIMEOUT 80      /* 同時押しタイマー(mSec) */
+#define IMS_MAX_COMBO_LEN 2       /* language.cでの composite文字数　例: は + ゜→ ぱ */
+
+/* =========================================================================
  * Host IME monitor connection (VIA Custom Value protocol)
  *
+ * 通常は変更しません
+ * 
  * ホスト常駐の IME 監視ソフトとの疎通は、VIA の Custom Value メカニズム
  * (id_custom_set_value = 0x07 / id_custom_get_value = 0x08) に相乗りする。
  * 独立 Raw HID コマンド ID を作ると VIA プロトコル (0x01-0x15) と衝突する
@@ -163,7 +178,7 @@ enum custom_keycodes {
  * 常に保証される。
  *
  * VIA 無効時 (VIA_ENABLE=no) は ims.c 末尾の HID ブロックがコンパイルから
- * 外れるため、こちらも blind IMS のみで完全動作する。
+ * 外れるため、こちらも blind IMS のみで動作させることになる。
  
  * VIA Custom Value の channel ID
  * VIA が予約する 0x00〜0x05 (backlight/rgblight/rgb_matrix/led_matrix/audio) を避け、

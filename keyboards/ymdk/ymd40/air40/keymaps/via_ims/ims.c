@@ -103,6 +103,7 @@
 #include "via.h"
 
 extern void ims_handle_lang(uint16_t index);
+extern bool process_ims_symbol_conv(uint16_t keycode, keyrecord_t *record);
 
 /* ===================================================================================
  * [A-1] 型・変数  (process_ims / ims_matrix_scan / via_custom_value_command_kb で共有)
@@ -148,11 +149,26 @@ static ims_chord_t chord = {0, 0, 0, false};   /* 押されたキーの修飾状
 
 /* A-2-b : 素通しキー追跡
  *    (呼び出し元: try_match_special / process_kana / ims_apply_host_state)
- *    Mod(Ctrl/Alt/GUI) 保持中の passthrough で host に press を送ったキーの(row,col) を記録。
- *    Mod を先に離してからキー release が来た場合、release を eat せず host に送る必要がある。
- *    (さもないと host 側でキーが stuck してオートリピートで暴走する)。
+ *
+ *    press を host に流したキーの (row, col) を記録し、release を必ず host に
+ *    届けることで stuck を防ぐ。
+ *    不変条件: passthrough_key にセットしたキーの release は、流入経路に
+ *              関わらず host に届かなければならない。
+ *
+ *    用途は 2 つ:
+ *    (a) Mod(Ctrl/Alt/GUI) 保持中の passthrough
+ *        process_kana で「Mod 保持中の key を host に流す」とき記録。
+ *        Mod を先に離してから key release が来ると、その時点で get_mods() は
+ *        既に 0 で、通常経路 (Mod ガード) を通らず process_kana が release を
+ *        eat してしまうため、ここで素通しさせる必要がある。
+ *    (b) 基本 keycode 単独で特殊キー (IMS_IME_SWITCH 等) にマッチした場合、
+ *        try_match_special が press 時の即判定で chord_reset() してしまうため、
+ *        release 時には chord.started=false で MATCH_NONE が返り、process_kana に
+ *        フォールスルーする。L_LANG[row,col] が KC_NO だと release が eat されて
+ *        host 側で stuck する (修飾キー型の IMS_IME_SWITCH=KC_RALT では
+ *        IS_MODIFIER_KEYCODE 経路で素通しされるためこの問題は起きない)。
  */
-static pending_key_t passthrough_key = {0, 0, false};  /* 素通しキー追跡 */
+static pending_key_t passthrough_key = {0, 0, false};
 
 /* A-2-c : レイヤ移動による alfa トラッキング
  *     (呼び出し元: set_ime_on / alfa_tgl_fire / process_ims / ims_apply_host_state) 
@@ -547,6 +563,10 @@ static ims_match_t try_match_special(uint16_t keycode, keyrecord_t *record) {
                 if (match_other_specials(keycode)) {
                     chord_reset();
                     if (pending_lang.valid) flush_pending();
+                    /* release stuck 防止 (用途 (b)、A-2-b 参照) */
+                    passthrough_key.row   = record->event.key.row;
+                    passthrough_key.col   = record->event.key.col;
+                    passthrough_key.valid = true;
                     return IMS_MATCH_PASS;
                 }
                 chord_reset();
@@ -714,9 +734,9 @@ bool process_ims(uint16_t keycode, keyrecord_t *record) {
         return false;
     }
 
-    /* VIA 合成キーは chord 管理外、常にホストに流す */
+    /* VIA 合成キーは chord 管理外。記号変換テーブルを通してホストへ */
     if (is_composed_kc(keycode)) {
-        return true;
+        return process_ims_symbol_conv(keycode, record);
     }
 
     /* レイヤ移動キー (MO/TO/TG/OSL/LT) : IME on/off に関係なく一元処理。
@@ -763,8 +783,8 @@ bool process_ims(uint16_t keycode, keyrecord_t *record) {
 
     /* (1-2) モード判定 */
     if (!ime_on || alfa_mode) {
-        /* (1-3) 英数モード : 素通し */
-        return true;
+        /* (1-3) 英数モード : US→JP106 記号変換テーブルを通してホストへ */
+        return process_ims_symbol_conv(keycode, record);
     }
 
     /* (2) かなモード */

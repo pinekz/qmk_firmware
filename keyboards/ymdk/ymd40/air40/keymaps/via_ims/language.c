@@ -27,16 +27,6 @@
 /* JP layout common keys (レイアウト共通キー)
  * IMEがJP106かな配列を前提とするため、全レイアウトで同じ HIDコードを送る必要があります */
 
-/* 記号キー */
-#define JA_AT    KC_LBRC        /* @  */
-#define JA_LBRC  KC_RBRC        /* [  */
-#define JA_RBRC  KC_BSLS        /* ]  */
-#define JA_BSLS  KC_INT1        /* \  */
-#define JA_YEN   KC_INT3        /* ¥  */
-#define JA_CIRC  KC_EQL         /* ^  */
-#define JA_COLN  KC_QUOT        /* :  */
-#define JA_SCLN  KC_SCLN        /* ;  */
-
 /* 読点・句点 */
 #define JA_TEN   S(KC_COMM)     /* 、読点 */
 #define JA_MARU  S(KC_DOT)      /* 。句点 */

@@ -5,37 +5,39 @@
 
 /*
  * US_JP_extra.h
- * JA_ エイリアス定義ファイル
- * language.c のコンポジットテーブルで使用する視認性エイリアス。
+ * language.c のかな出力で使う、レイアウト依存 4 シンボルの定義。
  *
- * config.h で以下のいずれかを定義する：
- *   #define IMS_LAYOUT_JP106   JP106キーボード使用時
- *   #define IMS_LAYOUT_US_AX   US/AXキーボード使用時
- *   未定義の場合はUSレイアウトをデフォルトとする
+ * 分岐軸: OS_LAYOUT_* (OS 認識レイアウト)
+ *   tap_code16 で送出する HID は OS がどう解釈するかだけで決まるため、
+ *   物理キーボード (IMS_LAYOUT_*) 側の分岐は不要。
+ *
+ * config.h で OS_LAYOUT_JP106 または OS_LAYOUT_US_AX のいずれかを定義する。
  */
 
-/* レイアウトで異なる特殊キー
- * IMEがJP106かな配列を前提とするため、AX/USでも同じHIDコードを送る必要があります */
- 
-#if defined(IMS_LAYOUT_JP106)
-#define JA_MU    KC_RBRC        /* む  JP106: ]位置 */
-#define JA_RO    KC_INT1        /* ろ  JP106: \位置(右Shift左) */
+#if defined(OS_LAYOUT_JP106)
+/* JP106 OS かなモードでのキー位置と HID の対応:
+ *   @ キー  = KC_LBRC  → 濁点 ゛   (language.c JA_DAKUTEN)
+ *   [ キー  = KC_RBRC  → 半濁点 ゜ (language.c JA_HANDAKU) / Shift で「(JA_KAGL)
+ *   ] キー  = KC_BSLS  → む       / Shift で 」
+ *   \_ キー = KC_INT1  → ろ       (Shift 不感応)
+ *   ¥ キー  = KC_INT3  → ー
+ *
+ * 注) む を KC_RBRC にすると [ キー (半濁点) と衝突する。
+ *     」 を S(KC_INT1) にすると \_ キー (ろ) が出る (Shift 不感応のため)。
+ */
+#define JA_MU    KC_BSLS        /* む  JP106: ]位置 */
+#define JA_RO    KC_INT1        /* ろ  JP106: \_位置 (右Shiftの左) */
 #define JA_CHO   KC_INT3        /* ー  JP106: ¥位置 */
-#define JA_KAGR  S(KC_INT1)     /* 」  JP106: Shift+\位置 */
+#define JA_KAGR  S(KC_BSLS)     /* 」  JP106: Shift+]位置 */
 
-#elif defined(IMS_LAYOUT_US_AX)
+#elif defined(OS_LAYOUT_US_AX)
 #define JA_MU    KC_GRV         /* む  AX: `位置 */
 #define JA_RO    KC_NUBS        /* ろ  AX: 0x56 */
 #define JA_CHO   KC_BSLS        /* ー  AX: \位置 */
 #define JA_KAGR  S(KC_GRV)      /* 」  AX: ~キー */
 
-#else  /* US */
-#define JA_MU    KC_BSLS        /* む  US: \位置 */
-#define JA_RO    KC_RO          /* ろ  US: スキャンコード0x73 */
-#define JA_CHO   S(KC_MINS)     /* ー  US: Shift+- */
-#define JA_KAGR  S(KC_RBRC)     /* 」  US: Shift+] */
+#else
+#error "Define OS_LAYOUT_JP106 or OS_LAYOUT_US_AX in config.h"
 #endif
-
-
 
 #endif
