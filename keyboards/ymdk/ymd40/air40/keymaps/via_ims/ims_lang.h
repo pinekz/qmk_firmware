@@ -89,9 +89,9 @@ enum layer_names {
  *   (VIA でこのカスタムキーコードを物理キー位置に配置する)
  * ========================================================================= */
 
-#define IMS_ALFA_TGL        LCTL(KC_0)
-#define IMS_ALFA_TGL_ON     LCTL(KC_0)
-#define IMS_ALFA_TGL_OFF    LCTL(KC_SPC)
+#define IMS_ALFA_TGL        LCTL(KC_F13)
+#define IMS_ALFA_TGL_ON     LCTL(KC_F13)
+#define IMS_ALFA_TGL_OFF    LSFT(KC_F13)
 
 /* =========================================================================
  * (5) IMS Bypass : IMS全体バイパススイッチ
