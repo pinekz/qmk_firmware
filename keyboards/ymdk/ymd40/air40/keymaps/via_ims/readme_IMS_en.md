@@ -80,7 +80,7 @@ In QMK, this is the section that takes a composite key from Via and sends it to 
 In the end it did get completed in the form of the conceptual diagram below, but looking back, my conclusion is that it won't work unless you broaden the input information yourself (the way Via's custom `SAFE_RANGE` had to be supplied) and actively push the reasoning deeper through back-and-forth on the produced code.
 (I get nervous imagining a dystopia far worse than a great-unemployment era once civil servants start using AI.)
 
-![IMS Conceptual Diagram](IMS概念図.png)
+![IMS Conceptual Diagram](IMS_conceptual_diagram.png)
 
 #### II-(4) Acquiring and handling the IME state
 
