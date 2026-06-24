@@ -20,13 +20,17 @@
  *   混合型 (IMEで設定に同期させる必要があります):
  *     3つとも定義可
  * 
+ *   注）全角/半角キー = KC_GRV の設定をすると、この imsではスイッチとして特別扱い
+ *      の為、英語キーボードで（`~）を押しても出力できなくなります。
+ *      半角の `はマークダウン記法などで必要になる為、ims スイッチﾏとしては、
+ *      それ以外の C(KC_F12) などで代用することを推奨します。
  *   注）最新の 2025-2026年 QMKでは、全角/半角 = KC_LNG5 に変更されていますが、
  *      via はそれに追随しておらず KC_LANG5 のままで、MS-IMEも KC_GRV のままです。
  *      キーボードファームウェアとして閉じた世界では独断専行可能ですが、IMEとの連携
  *      を必要とする本件は留意が必要です。(Macも同様ですが筆者に実機がなく不明です)
  * ========================================================================= */
 
-#define IMS_IME_SWITCH  KC_GRV
+#define IMS_IME_SWITCH  C(KC_F12)
 // #define IMS_IME_ON   KC_LNG1
 // #define IMS_IME_OFF  KC_LNG2
 
@@ -73,17 +77,18 @@ enum layer_names {
  * --- 設定例 ---
  *
  * １キーで双方向トグル（Japanist10 など):
- *   #define IMS_ALFA_TGL       LCTL(KC_Q)   : IME設定の英数かなトグルキー 
- *   #define IMS_ALFA_TGL_ON    LCTL(KC_Q)
- *   #define IMS_ALFA_TGL_OFF   LCTL(KC_Q)
+ *   #define IMS_ALFA_TGL       LCTL(KC_F13)   : IME設定の英数かなトグルキー 
+ *   #define IMS_ALFA_TGL_ON    LCTL(KC_F13)
+ *   #define IMS_ALFA_TGL_OFF   LCTL(KC_F13)
  *
  * オン・オフ別キー (MS-IME・MAC):
- *   #define IMS_ALFA_TGL       LCTL(KC_U)    <- ユーザーはこのキーを押す
- *   #define IMS_ALFA_TGL_ON    LCTL(KC_U)    <- IME設定の英数変換キー 
- *   #define IMS_ALFA_TGL_OFF   LCTL(KC_SPC)  <- IME設定のひらがなキー 
+ *   #define IMS_ALFA_TGL       LCTL(KC_F13)    <- ユーザーはこのキーを押す
+ *   #define IMS_ALFA_TGL_ON    LCTL(KC_F13)    <- IME設定の英数変換キー 
+ *   #define IMS_ALFA_TGL_OFF   LSFT(KC_F14)    <- IME設定のひらがなキー 
  *
  * トリガにカスタムキーコードを設定して使う場合:
  *   #define IMS_ALFA_TGL       J_ALFA_TGL  : Also add in enum custom_keycodes
+ *                                            enum custom_keycodes に加える必要あり
  *   #define IMS_ALFA_TGL_ON    LCTL(KC_U)
  *   #define IMS_ALFA_TGL_OFF   LCTL(KC_SPC)
  *   (VIA でこのカスタムキーコードを物理キー位置に配置する)
@@ -91,7 +96,7 @@ enum layer_names {
 
 #define IMS_ALFA_TGL        LCTL(KC_F13)
 #define IMS_ALFA_TGL_ON     LCTL(KC_F13)
-#define IMS_ALFA_TGL_OFF    LSFT(KC_F13)
+#define IMS_ALFA_TGL_OFF    LSFT(KC_F14)
 
 /* =========================================================================
  * (5) IMS Bypass : IMS全体バイパススイッチ

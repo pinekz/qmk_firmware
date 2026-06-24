@@ -196,6 +196,7 @@ const uint16_t kana_composite_table[][IMS_MAX_COMBO_LEN] = {
 };
 
 void ims_handle_lang(uint16_t index) {
+
     if (index < (sizeof(kana_composite_table)/sizeof(kana_composite_table[0]))) {
         for (int i = 0; i < IMS_MAX_COMBO_LEN; i++) {
             uint16_t code = kana_composite_table[index][i];
