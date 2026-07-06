@@ -30,7 +30,7 @@
  *      を必要とする本件は留意が必要です。(Macも同様ですが筆者に実機がなく不明です)
  * ========================================================================= */
 
-#define IMS_IME_SWITCH  C(KC_F12)
+#define IMS_IME_SWITCH  C(KC_F13)
 // #define IMS_IME_ON   KC_LNG1
 // #define IMS_IME_OFF  KC_LNG2
 
@@ -94,8 +94,8 @@ enum layer_names {
  *   (VIA でこのカスタムキーコードを物理キー位置に配置する)
  * ========================================================================= */
 
-#define IMS_ALFA_TGL        LCTL(KC_F13)
-#define IMS_ALFA_TGL_ON     LCTL(KC_F13)
+#define IMS_ALFA_TGL        LCTL(KC_F14)
+#define IMS_ALFA_TGL_ON     LCTL(KC_F14)
 #define IMS_ALFA_TGL_OFF    LSFT(KC_F14)
 
 /* =========================================================================
@@ -162,7 +162,7 @@ enum custom_keycodes {
  * 通常は変更しません
  * ========================================================================= */
 
-#define IMS_COMBO_TIMEOUT 80      /* 同時押しタイマー(mSec) */
+#define IMS_COMBO_TIMEOUT 120      /* 同時押しタイマー(mSec) */
 #define IMS_MAX_COMBO_LEN 2       /* language.cでの composite文字数　例: は + ゜→ ぱ */
 
 /* =========================================================================

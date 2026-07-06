@@ -685,7 +685,7 @@ static bool process_kana(uint16_t keycode, keyrecord_t *record) {
      * KC_TRNS: 下位レイヤへ素通し (return true)。
      */
     if (lang_kc == KC_NO)   return false;
-    if (lang_kc == KC_TRNS || lang_kc == KC_BSPC || lang_kc == KC_DEL) return true;
+    if (lang_kc == KC_TRNS || lang_kc == KC_BACKSPACE || lang_kc == KC_DELETE) return true;
 
     if (record->event.pressed) {
         uint8_t s_key_layer = (pending_s_key != 0xFFFF) ? s_key_to_layer(pending_s_key) : 0xFF;
