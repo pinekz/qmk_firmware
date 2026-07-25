@@ -1,4 +1,4 @@
-# IMS (Internationalized Multi-Shift) Keyboard ver. 1.0
+# IMS (Internationalized Multi-Shift) Keyboard ver. 2.0 (2026/07.26,  ver1.0 :2026/06/26)
 
 This is a Japanese kana-input module based on QMK and Via.
 It builds on the "Thumb Shift" input scheme for natural Japanese typing, allowing free character placement via Via.
