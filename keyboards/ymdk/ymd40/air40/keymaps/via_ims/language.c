@@ -193,6 +193,7 @@ const uint16_t kana_composite_table[][IMS_MAX_COMBO_LEN] = {
     [86] = {JA_XKA, 0},       /* ヵ  J_XKA */
     [87] = {JA_XKE, 0},       /* ヶ  J_XKE */
     [88] = {JA_XWA, 0},       /* ゎ  J_XWA */
+    [89]  = {JA_U,   JA_DAKUTEN}, /* ゔ  J_VU  */
 };
 
 void ims_handle_lang(uint16_t index) {

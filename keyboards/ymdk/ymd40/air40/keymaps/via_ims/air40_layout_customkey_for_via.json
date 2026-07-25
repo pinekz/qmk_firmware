@@ -107,7 +107,7 @@
     {"name": "KAGR", "title": "J_KAGR", "shortName": "KGR"},
 		{"name": "XKA", "title": "J_XKA", "shortName": "XKA"},
 		{"name": "XKE", "title": "J_XKE", "shortName": "XKE"},
-		{"name": "XWA", "title": "J_XWA", "shortName": "XWA"}
-    
+		{"name": "XWA", "title": "J_XWA", "shortName": "XWA"},
+ 		{"name": "VU", "title": "J_VU", "shortName": "VU"}   
   ]
 }

@@ -152,7 +152,7 @@ enum custom_keycodes {
     J_XYA, J_XYU, J_XYO,
     J_XTU,
     J_CHO, J_TEN, J_MARU, J_NAKA, J_KAGL, J_KAGR,
-    J_XKA, J_XKE, J_XWA,
+    J_XKA, J_XKE, J_XWA,  J_VU,
     J_KANA_END
 };
 
