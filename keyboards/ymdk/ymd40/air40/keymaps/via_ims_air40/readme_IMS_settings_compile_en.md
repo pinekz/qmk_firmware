@@ -1,4 +1,5 @@
-# IMS (国際化マルチシフト)キーボード
+# IMS (国際化マルチシフト)キーボー
+ ver. 2.5 :2026/10/10 State machine implementation and process organization
  ver. 2.0 :2026/07/26 QMK 0.33.0
 (ver. 1.0 :2026/06/26 QMK 0.27.0)
 
@@ -128,6 +129,9 @@ QMK is basically self-contained at the keyboard level, so its sphere of influenc
 // #define IMS_IME_ON   KC_LNG1
 // #define IMS_IME_OFF  KC_LNG2
 ```
+/* Do not use the VIA combo key C(...) notation in switch definitions (same applies below).
+ * Similarly, nested modifier definitions such as LCTL(LSFT(...)) are not supported.
+ */
 
 **(2) Chord keys (free key choice)**
 

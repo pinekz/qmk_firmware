@@ -128,6 +128,9 @@ QMK is basically self-contained at the keyboard level, so its sphere of influenc
 // #define IMS_IME_ON   KC_LNG1
 // #define IMS_IME_OFF  KC_LNG2
 ```
+/* Do not use the VIA combo key C(...) notation in switch definitions (same applies below).
+ * Similarly, nested modifier definitions such as LCTL(LSFT(...)) are not supported.
+ */
 
 **(2) Chord keys (free key choice)**
 
