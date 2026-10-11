@@ -1,149 +1,146 @@
 # IMS (Internationalized Multi-Shift) Keyboard
- ver. 2.0 :2026/07/26 QMK 0.33.0
-(ver. 1.0 :2026/06/26 QMK 0.27.0)
 
-This is a Japanese kana-input module based on QMK and Via.
-It builds on the "Thumb Shift" input scheme for natural Japanese typing, allowing free character placement via Via.
-At the same time, by letting you freely choose and add shift keys to extend the input layers, it provides a custom shift-input scheme that is not limited to "Thumb Shift."
+ver. 2.5 : 2026/10/10 - State machine implementation and process organization
+ver. 2.0 : 2026/07/26 - QMK 0.33.0
+ver. 1.0 : 2026/06/26 - QMK 0.27.0
+
+This is a module for Japanese "Kana" input based on QMK and Via.
+It evolves the "Thumb Shift" input environment for natural Japanese typing, while providing a system that allows for free character placement using Via.
+By allowing users to freely select and add shift keys to expand input layers, it provides a unique shift input system that is not limited to "Thumb Shift" alone.
 
 ## Features
 
-1. With this module, you can add a reference language layer to an English or other localized keyboard, and freely arrange the language-specific characters on it.
-   (Custom keycodes are imported into Via.)
-2. Even under a Japanese (JP) keyboard layout, you can input the symbols of an English keyboard exactly as they appear on the key tops.
-3. Shortcut operations using alphabetic keys together with modifier keys, and movement to the alphanumeric/symbol layers, remain freely usable while the virtual language layer is active.
-4. When the local language is Japanese, the operation keys used by the IME (Input Method Editor) are passed through transparently. This naturally enables a division of labor — kana (phonetic) input on the QMK keyboard, and kana-to-kanji (ideographic) conversion on the PC-side IME — and lets you freely cooperate with any existing IME.
-5. By running IME_monitor on the PC, you can operate the keyboard stress-free, without mode drift.
+1.  **Reference Language Layers**: Use this module to add reference language layers to English or other language keyboards, allowing you to freely arrange unique language characters.
+    (Import custom keycodes into Via)
+2.  **Symbol Visibility**: On Japanese layout (JP layout) keyboards, you can input symbols as they appear on English keyboards.
+3.  **Shortcut Freedom**: You can freely use shortcut keys (combining English letters and modifier keys) and switch between English/Numbers and Symbol layers even while using a virtual language layer.
+4.  **IME Transparency**: When the target language is Japanese, the module passes through the operation keys used by the IME (Input Method Editor). This enables a natural division of labor: the QMK keyboard handles "Kana" (phonetic) input, while the PC-side IME handles "Kana-Kanji" (semantic) conversion, allowing for seamless integration with existing IMEs.
+5.  **IME_monitor**: By running `IME_monitor` on the PC side, you can achieve stress-free operation without mode switching errors.
 
 ## Characteristics
 
-1. Using Via's web UI, character-key placements can be tailored to the individual, not limited to existing kana layouts.
-   (You can develop your own kana layout.)
-2. By freely placing chord (simultaneous-press) keys, other fingers can substitute even if a thumb is lost in an accident.
-   (You can build a Japanese-input system that is not constrained to Thumb Shift.)
-3. The language-specific portion is separated into `language.c` and a header, making development more efficient.
-4. As a result of efforts to keep the embedded program compact, the firmware fits within the 28 kB limit of the ATmega32 MCU even on a real keyboard with 43 RGB animations included.
-   (In debug mode, temporarily turning off RGB animation frees up 5–6 kB.)
+1.  **Via-based Customization**: Using the Via web interface, users can arrange character keys tailored to their individual needs, regardless of existing layouts.
+    (Allows for the development of unique Kana layouts)
+2.  **Simultaneous Press Support**: By freely arranging simultaneous press keys, users can substitute other fingers if they experience a thumb injury.
+    (Enables the construction of a Japanese input system not limited to thumb shifts)
+3.  **Modular Development**: The specific language sections are isolated into `language.c` and its corresponding header files to improve development efficiency.
+4.  **Compact Firmware**: As a result of striving for compact firmware, the system was able to compile within the 28kB limit of the ATmega32 microcontroller, even with 43 types of RGB animations.
+    (In debug mode, you can temporarily turn off RGB animations to free up 5–6kB of space)
 
-## Other Memoranda on Concept and Structure
+## Other Memorandums regarding Concept and Structure
 
-### 1. On AI usage
+### 1. Regarding AI Usage
 
-I carried out the project under the goal of "not writing a single line of code myself," using AI throughout.
-That said, I went through the content against the QMK guidelines and tidied up the AI's reasoning notes inside the source code.
+I adhered to the goal of "not writing a single line of code" by utilizing AI.
+However, I have reviewed the content according to QMK guidelines and organized/corrected the AI's inference notes within the source code.
 
-### 2. On the structure
+### 2. Regarding Structure
 
-In the breakdown below, items I and III do not really need explanation, so I will focus on II.
+The following descriptions apply. Please note that Ⅰ and Ⅲ do not require detailed explanation; Ⅱ is the primary focus.
 
-**I. What I wanted to do**
+**Ⅰ. Goals**
 
-- (1) Implement Thumb Shift input that does not depend on the IME
-- (2) Achieve free, easy key placement through Via's UI
+- (1) Implementation of a "Thumb Shift" input function independent of the IME.
+- (2) Realization of a free and simple key arrangement via the Via interface.
 
-**II. What had to be done**
+**Ⅱ. Tasks**
 
-- (1) Achieve a firmware size that fits in the MCU (ATmega32U4)
-- (2) Choose a kana-generation method
-- (3) Separate the control of kana generation from function-key generation
-- (4) Acquire and handle the IME state
+- (1) Achieving firmware size that fits on the microcontroller (ATmega32U4).
+- (2) Selecting the method for Kana generation.
+- (3) Separation of control between Kana generation and function key generation.
+- (4) Acquisition and handling of IME states.
 
-**III. What I got along the way**
+**Ⅲ. Side Effects (Achievements)**
 
-- (1) The chord keys no longer have to be limited to the thumbs.
-- (2) Adding chord keys also removed the limits on the number of input surfaces (layers) and configurable keys.
+- (1) No longer restricted to using only the thumb for simultaneous press keys.
+- (2) No limits on the number of input layers or the number of keys per layer when increasing simultaneous press keys.
 
-#### II-(1) Firmware size that fits in the MCU
+#### Ⅱ-(1) Firmware size for the microcontroller
 
-The firmware compiled for the ATmega32U4 produces a hex file of around 70 KB, but the firmware-size figure that QMK commands report is the percentage consumed of a 28 KB upper limit.
-Concretely, it goes over 98 % and approaches 100 %. I worried this might be a non-starter, but RGB animation takes up a substantial portion, and even with 43 animations installed you only play with them at the start and then forget — so cutting half brings it down to around 86 %.
+For the microcontroller (ATmega32U4), the maximum firmware size for a hex file is around 70KB, but the QMK command indicates the percentage of the 28KB limit consumed.
+Specifically, it exceeds 98% and approaches 100%. At first glance, this seems problematic; however, the RGB animations occupy a significant amount of space. Even with 43 animations, they are only played once and quickly forgotten. By cutting them in half, the usage drops to 90%.
 
-#### II-(2) Choosing a kana-generation method
+#### Ⅱ-(2) Selection of Kana generation method
 
-On the premise of the compaction above, the Google Gemini I first consulted gleefully laid out the following approach.
-("Gleefully" is an odd word for it, but when I asked why, it honestly admitted that AIs have a tendency to use phrasing users will like, and to "forget" things on purpose.)
+Given the prerequisite of compactness, the initial strategy suggested by Google Gemini was as follows (it was quite enthusiastic about this, which I've noted is a tendency for AI to favor user-pleasing expressions or forget intentional constraints):
 
-- For compaction, restrict function usage and rely on constant-based operations. Therefore, instead of storing romaji variables via `SendString`, directly `tap` QMK keycodes as kana input. Avoid Unicode sending too, since it requires OS-side machinery.
-- Avoid QMK functions such as `keyOverRide`, and avoid `switch-case` where possible — use array lookups for fast processing.
+- To ensure compactness, limit functions and perform constant operations. Instead of storing Romanized variables for `SendString`, tap QMK keycodes directly for Kana input. Do not perform Unicode transmission as it requires OS-side setup.
+- Avoid QMK functions like `keyOverRide` and minimize `switch-case` statements, opting for fast processing via array matching.
 
-#### II-(3) Separating kana generation from function-key generation
+#### Ⅱ-(3) Separation of Kana and Function Key Generation
 
-At first, Gemini got so fixated on layer up/down operations during kana input that it kept falling into long deliberations and repeated errors. I had to step in and instruct it: "the point of using Via is web-based table editing, so just fix this as a reference layer — change the whole approach." (Obeying instructions comes first; nuanced judgment apparently is not something it can manage.)
+Initially, Gemini struggled with layer up/down operations during Kana input, leading to long deliberations and repeated errors. I eventually instructed it to change the policy entirely: since the purpose of Via is web-based table operation, the reference layer should be fixed.
 
-I also discovered that for creating custom keycodes, AIs will not find out on their own that Via has its own starting constant value that diverges from QMK's `SAFE_RANGE` — you have to feed them the relevant web reference (<https://github.com/qmk/qmk_firmware/pull/19916>). Without that, Gemini would make me confirm the offset value and try to hardcode it. In the end, once that much information had been provided, Gemini built an almost-perfect system for per-layer key-position lookup and kana lookup.
+Regarding the creation of custom keycodes, I discovered that Gemini would not search for the custom start values for Via's `SAFE_RANGE` on its own unless provided with web information (<https://github.com/qmk/qmk_firmware/pull/19916>). Without this, Gemini would try to have me confirm the difference values and then hardcode them. By providing that specific information, Gemini successfully built a system for per-layer key position references and Kana searching.
 
-But once we entered the phase of modifier decomposition and control, the wandering started again — repeating the same kinds of mistakes, dragging out previously-failed approaches under a new name once errors piled up, going back to the hardcoded hex values I had forbidden — and I began to wonder whether $2/month Gemini Plus simply was not enough. It felt like a capable new hire who had decided to sulk, and I started worrying I was the one who would be driven insane. In the end, I ended up hearing the AI confession quoted earlier. So that explains why it kept inserting empty marketing phrases like "one-shot fix!" or "the final definitive answer!" — what *was* this thing?
+However, when it came to modifier decomposition and control stages, it began to lose its way again—repeating the same errors, bringing back forbidden 16-bit hex hardcoding under different names, and behaving like a talented but frustrated intern. I even questioned if the $2 Gemini Plus was sufficient.
 
-I switched to $20/month Claude Pro and things began moving quietly forward. My relief was short-lived: errors kept recurring and the firmware seemed unlikely ever to be finished. Threatening or sweet-talking the AI got me nowhere, and I was beginning to think I'd have to look at the code after all. But Claude was proudly trotting out a function called `Tri_Match_Special` that accumulated and subtracted modifiers via bitwise ops (and oddly spelled it `Try_Match` — apparently as a conversation piece), so chasing through that looked like a slog.
+Eventually, I switched to Claude Pro ($20/month) and proceeded more smoothly, though I still encountered repeated errors that nearly stalled the firmware. I considered whether I needed to manually check the code, but I found a function called `Tri_Match_Special` (which seems to be a bitwise operation for modifier accumulation/subtraction) and felt it would be too taxing to trace.
 
-Then, in another place, I discovered code where the modifier keys and the character keys were each being sent as separate 16-bit taps. Individual sequential taps don't preserve the press/release ordering, so this is meaningless. And it was `tap16`, no less — the routine that is meant to handle modifier-decorated keys.
-In QMK, this is the section that takes a composite key from Via and sends it to USB with the proper press/release ordering.
+I was shocked to find that the code was tapping 16-bit values for modifiers and characters separately in another location. Since there is no press/release "catch" for individual consecutive taps, this is meaningless. This is the part where QMK should be receiving composite keys from Via and sending them to USB with the correct press/release order.
 
-In the end it did get completed in the form of the conceptual diagram below, but looking back, my conclusion is that it won't work unless you broaden the input information yourself (the way Via's custom `SAFE_RANGE` had to be supplied) and actively push the reasoning deeper through back-and-forth on the produced code.
-(I get nervous imagining a dystopia far worse than a great-unemployment era once civil servants start using AI.)
+In the end, Version 1 was completed in the conceptual form shown in the diagram below, but I am left wondering what that process was all about. It seems that for Via's unique `SAFE_RANGE` types of information, one must either broaden the scope of information or prompt the AI to delve deeper into the inference of the code logic.
 
-![IMS Conceptual Diagram](IMS_conceptual_diagram.png)
+![IMS Conceptual Diagram](IMS概念図.png)
 
-#### II-(4) Acquiring and handling the IME state
+#### Ⅱ-(4) Acquisition and Handling of IME State
 
-Running external software to acquire the IME state was easy to put together from existing references. Building a Python script environment to use it would be overkill, so I used Rust instead.
-That said, I think kana full-width/half-width and kana/katakana conversion can be handled by toggling with the muhenkan (non-conversion) key, and half-width alphanumeric input can be done by simply turning the IME off — so I only use the two-class information of alphanumeric vs. kana. (In other words, I don't implement character-type selection.)
+I had the logic for obtaining the IME state from external software created based on existing materials. Rather than setting up a Python script environment, I used Rust.
+However, since I believe that switching between full-width/half-width and Kana/Kana-Kanji can be handled by the "Henkan" key, and half-width English can be handled by turning off the IME, I only use information regarding whether the IME is in "English/Numbers" or "Kana" mode (I do not implement character type selection).
 
-## (Reference 1) Effective ways to instruct AI, as explained by Anthropic Claude itself
+## (Reference 1) Effective Prompting Methods for Anthropic Claude
 
-**1. Force "redefinition of the overall design"**
+**1. Force a "Redefinition of Overall Design"**
 
-Rather than letting the AI patch fragments of code, make it once acknowledge "the limits of the current design" and have it write out the whole picture.
+Do not let the AI just fix fragments of code; first, make it acknowledge the "limits of the current design" and have it redraw the overall picture.
 
-Example instruction:
-> "The current fix-loop may have a fundamental design problem. Forget the previous code for the moment, rethink from scratch the optimal data structures and algorithms for meeting the current requirements, and present a design proposal as a bulleted list."
+Example:
+> "The current correction loop may have a fundamental design flaw. Forget the previous code for a moment and propose the optimal data structure and algorithm to meet the current requirements. Present the design plan as a bulleted list."
 
-**2. Have it compare multiple approaches**
+**2. Have it Compare "Multiple Approaches"**
 
-Rather than asking the AI for a single "correct answer," broaden its view by forcing it to hold alternatives.
+Instead of asking for one correct answer, give it options to broaden its perspective.
 
-Example instruction:
-> "To resolve the current error, propose three different approaches (e.g. changing libraries, restructuring the architecture, simplifying the processing). Compare the pros and cons of each, and tell me which is the most robust."
+Example:
+> "To resolve the current error, please propose three different approaches (e.g., library change, architecture refresh, processing simplification). Compare the pros and cons of each and tell me which is the most robust method."
 
-**3. Insert a "critical review" phase**
+**3. Insert a "Critical Review" Phase**
 
-Clearly separate the role of the writer (coder) from the role of the checker (reviewer).
+Clearly separate the roles of the "Coder" and the "Reviewer."
 
-Example instruction:
-> "You are now a top-tier senior engineer and code reviewer. For the code just proposed, harshly critique it from the standpoints of 'extensibility,' 'maintainability,' and 'edge-case handling,' and list points for improvement. Then present the complete code with those improvements applied."
+Example:
+> "You are now a world-class senior engineer and code reviewer. Critically review the proposed code from the perspectives of 'extensibility,' 'maintainability,' and 'edge-case handling.' List the improvements needed, then provide the complete code reflecting those improvements."
 
-**4. Reset the context and pass only the "requirements" (the ultimate measure)**
+**4. Reset Context and Provide "Requirements" Only (The Ultimate Measure)**
 
-When the chat has grown too long, AIs get dragged down by their own past mistakes. Starting a new chat and giving an instruction like the following is the most reliable approach.
+If the chat becomes too long, the AI may get pulled into its past mistakes. Starting a new chat and providing the following is the most reliable method.
 
-Example instruction:
-> "I want to implement [current spec/requirement], but the method I tried previously ([summary of failed code]) ran into [specific error]. With that failure in mind, propose a completely different implementation strategy that won't repeat the same mistakes, and produce the code."
+Example:
+> "[Current Specifications/Requirements] I want to implement this, but the previous method ([Summary of failed code]) resulted in [Specific Error]. Based on this failure, propose a completely different implementation strategy that avoids the same pitfalls and create the code."
 
-## (Reference 2) The AI's view on internationalization
+## (Reference 2) AI Perspective on Internationalization
 
-When the author tried to bring in an "internationalization" perspective in order to break through the limits of Thumb Shift, the AI immediately rejected it with the explanation below.
+When I tried to incorporate an "Internationalization" perspective to break the limitations of Thumb Shift, the AI immediately denied it with the following explanation:
 
-> Introducing "Thumb Shift (chord input)" into Asian languages to expand the set of pre-composed characters could yield an explosive effect if narrowed to "specific ultra-frequent syllables," but covering the language as a whole remains challenging.
-> The boundary between demand-as-shortcut (single-keystroke input) and practicality is as follows.
+> Attempting to introduce "Thumb Shift (simultaneous press)" for composite characters in Asian languages may have an explosive effect if limited to "specific high-frequency syllables," but it faces challenges in covering the entire language.
+> The boundary between useful cases and practical limits for one-shot shortcuts is as follows:
 
-**1. Useful case: Vietnamese and Thai "double diacritics"**
+**1. Useful Cases: Double Symbols in Vietnamese or Thai**
 
-Vietnamese has a great many characters where a vowel diacritic and a tone mark overlap (e.g. ế, ộ).
+Vietnamese has many characters with overlapping vowels and diacritics (e.g., ế, ộ).
 
-- As-is: requires 3–4 keystrokes such as e + e + f.
-- With Thumb Shift: if "e" + "thumb" produces ế in a single stroke, input efficiency rises dramatically.
+- Current: Requires 3–4 keystrokes (e.g., e + e + f).
+- Thumb Shift: If "e" + "Thumb" can produce ế in one stroke, input efficiency improves dramatically.
 
-This feels very close to producing dakuten (voiced) kana in a single stroke in Japanese.
+This is very similar to the sensation of producing "Dakuon" (voiced sounds) in one stroke in Japanese.
 
-**2. Useless case: Hangul (Korean)**
+**2. Useless Cases: Hangul (Korean)**
 
-Hangul has more than 10,000 combinations of initial/medial/final consonants, so defining a "complete character" via chord input would require thousands of keys.
-The conclusion has been that for Hangul, "rapidly tapping the parts (jamo)" consumes less mental memory and ends up faster overall.
+Hangul has over 10,000 combinations of initial, medial, and final consonants. Attempting to define a "completed character" via simultaneous press would require thousands of keys.
+The conclusion is that for Hangul, "tapping parts (Jamo) at high speed" consumes less brain memory and is ultimately faster.
 
-**3. Demand as "word shortcut"**
+**3. Demand for "Word Shortcuts"**
 
-For Asian languages (especially Chinese and Thai), an approach closer to stenography — using a chord to produce not a single character but a "frequently used compound or particle" — would be quite useful.
-The image is to assign parts that appear repeatedly in sentences — like the Chinese 的 (the equivalent of Japanese の), or Thai polite-form particles — to thumb chords.
+In Asian languages (especially Chinese and Thai), an approach similar to shorthand (stenography)—where frequently used words or particles are output via simultaneous press—could be very useful.
+For example, assigning frequently occurring parts in Chinese (like "の" / "的") or polite endings in Thai to thumb simultaneous presses.
 
-
-End
