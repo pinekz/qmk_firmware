@@ -1,8 +1,8 @@
 # IMS (Internationalized Multi-Shift) Keyboard
 
-ver. 2.5 : 2026/10/10 - State machine implementation and process organization
-ver. 2.0 : 2026/07/26 - QMK 0.33.0
-ver. 1.0 : 2026/06/26 - QMK 0.27.0
+ver. 2.5 : 2026/10/10 - State machine implementation and process organization  
+ver. 2.0 : 2026/07/26 - QMK 0.33.0  
+ver. 1.0 : 2026/06/26 - QMK 0.27.0  
 
 This is a module for Japanese "Kana" input based on QMK and Via.
 It evolves the "Thumb Shift" input environment for natural Japanese typing, while providing a system that allows for free character placement using Via.
