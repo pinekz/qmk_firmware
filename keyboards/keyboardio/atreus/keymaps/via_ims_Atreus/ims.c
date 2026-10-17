@@ -2,7 +2,7 @@
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
- * the Free Software Foundation, either version 2 of the License, or
+ * the Free Software Foundation,eller version 2 of the License, or
  * (at your option) any later version.
  *
  * This program is distributed in the hope that it will be useful,
@@ -13,6 +13,7 @@
  * You should have received a copy of the GNU General Public License
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  * 
+ * Version 2.6 (2026/10/18)-- Enabled layer shifting while holding the thumb-shift key.
  */
 
 #include <string.h>
@@ -64,6 +65,9 @@ typedef struct {
     /* 追跡用バッファ */
     pending_key_t passthrough_key;
     pending_key_t layer_forced_alfa;
+
+    /* s_keyの挙動追跡用 */
+    bool s_key_used_as_prefix;
 } ims_context_t;
 
 /* グローバルコンテキストの初期化 */
@@ -77,7 +81,8 @@ static ims_context_t ctx = {
     .combo_timer = 0,
     .chord = {0, 0, 0, false},
     .passthrough_key = {0, 0, false},
-    .layer_forced_alfa = {0, 0, false}
+    .layer_forced_alfa = {0, 0, false},
+    .s_key_used_as_prefix = false
 };
 
 /* 定数定義 */
@@ -88,6 +93,7 @@ static ims_context_t ctx = {
 #ifndef IMS_ALFA_TGL_ON
 #define IMS_ALFA_TGL_ON  KC_NO
 #endif
+
 #ifndef IMS_ALFA_TGL_OFF
 #define IMS_ALFA_TGL_OFF KC_NO
 #endif
@@ -140,7 +146,7 @@ static void send_with_s_key(uint8_t s_key_layer) {
     if (!ctx.pending_lang.valid) return;
     uint16_t kc = dynamic_keymap_get_keycode(s_key_layer, ctx.pending_lang.row, ctx.pending_lang.col);
     ctx.pending_lang.valid = false;
-    ctx.pending_s_key        = 0xFFFF;
+    /* ctx.pending_s_key = 0xFFFF; を削除：s_keyを押しっぱなしにしている間状態を維持 */
     send_keycode(kc);
 }
 
@@ -148,7 +154,7 @@ static void flush_pending(void) {
     if (!ctx.pending_lang.valid) return;
     uint16_t kc = dynamic_keymap_get_keycode(L_LANG, ctx.pending_lang.row, ctx.pending_lang.col);
     ctx.pending_lang.valid = false;
-    ctx.pending_s_key        = 0xFFFF;
+    /* ctx.pending_s_key = 0xFFFF; を削除：タイマ切れ等でもs_keyの状態を維持 */
     send_keycode(kc);
     ctx.state = IMS_STATE_IDLE;
 }
@@ -205,6 +211,7 @@ static bool match_other_specials(uint16_t eff) {
         ctx.pending_lang.valid = false;
         ctx.pending_s_key        = 0xFFFF;
         ctx.state = IMS_STATE_IDLE;
+        ctx.s_key_used_as_prefix = false;
         return true;
     }
     if (eff == IMS_BYPASS) {
@@ -231,6 +238,7 @@ void ims_apply_host_state(bool host_ime_on, bool host_alfa) {
         ctx.pending_s_key             = 0xFFFF;
         ctx.combo_timer             = 0;
         ctx.layer_forced_alfa.valid = false;
+        ctx.s_key_used_as_prefix     = false;
     } else {
         if (!host_ime_on) {
             ctx.layer_forced_alfa.valid = false;
@@ -474,16 +482,26 @@ bool transition_kana_state(uint16_t lang_kc, keyrecord_t *record) {
         if (record->event.pressed) {
             if (ctx.pending_lang.valid) {
                 send_with_s_key(s_key_layer);
+                ctx.s_key_used_as_prefix = true;
             } else {
                 ctx.pending_s_key = lang_kc;
                 ctx.combo_timer = timer_read();
                 ctx.state = IMS_STATE_S_KEY_PENDING;
+                ctx.s_key_used_as_prefix = false;
             }
         } else {
-            if (ctx.pending_s_key != 0xFFFF) {
-                send_keycode(lang_kc);
-                ctx.pending_s_key = 0xFFFF;
-                ctx.state = IMS_STATE_IDLE;
+            if (ctx.pending_lang.valid) {
+                flush_pending();
+            } else if (ctx.pending_s_key != 0xFFFF) {
+                if (lang_kc == ctx.pending_s_key) {
+                    /* s_keyがプレフィクスとして消費されていない場合のみ、Tap挙動としてキーを送出 */
+                    if (!ctx.s_key_used_as_prefix) {
+                        send_keycode(lang_kc);
+                    }
+                    ctx.pending_s_key = 0xFFFF;
+                    ctx.state = IMS_STATE_IDLE;
+                    ctx.s_key_used_as_prefix = false;
+                }
             }
         }
         return false;
@@ -500,6 +518,7 @@ bool transition_kana_state(uint16_t lang_kc, keyrecord_t *record) {
             ctx.pending_lang.col   = record->event.key.col;
             ctx.pending_lang.valid = true;
             send_with_s_key(current_s_key_layer);
+            ctx.s_key_used_as_prefix = true; /* 文字キー入力によりプレフィクスとして消費 */
         } else if (ctx.pending_lang.valid) {
             flush_pending();
             ctx.pending_lang.row   = record->event.key.row;
@@ -512,6 +531,19 @@ bool transition_kana_state(uint16_t lang_kc, keyrecord_t *record) {
             ctx.pending_lang.valid = true;
             ctx.combo_timer = timer_read();
             ctx.state = IMS_STATE_S_KEY_PENDING;
+        }
+    } else {
+        if (ctx.pending_lang.valid) {
+            flush_pending();
+        } else if (ctx.pending_s_key != 0xFFFF) {
+            if (lang_kc == ctx.pending_s_key) {
+                if (!ctx.s_key_used_as_prefix) {
+                    send_keycode(lang_kc);
+                }
+                ctx.pending_s_key = 0xFFFF;
+                ctx.state = IMS_STATE_IDLE;
+                ctx.s_key_used_as_prefix = false;
+            }
         }
     }
     return false;
