@@ -1,6 +1,6 @@
 # IMS (Internationalized Multi-Shift) Keyboard
 
-ver. 2.6 : 2026/10/18 - Enabled layer shifting while holding the thumb-shift key.
+ver. 2.6 : 2026/10/18 - Enabled layer shifting while holding the thumb-shift key.  
 ver. 2.5 : 2026/10/10 - State machine implementation and process organization  
 ver. 2.0 : 2026/07/26 - QMK 0.33.0  
 ver. 1.0 : 2026/06/26 - QMK 0.27.0  
