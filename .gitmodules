@@ -25,3 +25,6 @@
 	path = lib/lvgl
 	url = https://github.com/qmk/lvgl.git
 	branch = release/v8.2
+[submodule "keyboards/royal_kludge/r65"]
+	path = keyboards/royal_kludge/r65
+	url = https://github.com/pinekz/KB_RK_R65.git
